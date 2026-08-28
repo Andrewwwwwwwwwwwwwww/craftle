@@ -47,9 +47,15 @@ public class CraftleScreen extends Screen {
     private static final int FLANK = 8;
     private static final int CENTER_W = 168;
     private static final int PANEL_W = FLANK + MINI_GRID + 12 + CENTER_W + 12 + MINI_GRID + FLANK;
-    private static final int PANEL_H = 224;
+    private static final int PANEL_H = 234;
     /** Widest a help-overlay line may be before it leaves the dark scrim. */
     private static final int HELP_W = PANEL_W - 44;
+    /**
+     * The action row sits a clear gap below the palette: it used to be ~6px under the
+     * bottom ingredient row, where a low click while picking an ingredient hit Craft and
+     * spent a guess on a half-built board.
+     */
+    private static final int BUTTON_TOP = 168;
 
     private static final int GREEN = 0xFF43A047;
     private static final int ORANGE = 0xFFDD9A28;
@@ -94,6 +100,7 @@ public class CraftleScreen extends Screen {
     private int panelLeft;
     private int panelTop;
     private int centerX;
+    private int centerLeft;
     private int gridX;
     private int gridY;
     private int outX;
@@ -139,7 +146,7 @@ public class CraftleScreen extends Screen {
         panelLeft = (this.width - PANEL_W) / 2;
         panelTop = Math.max(4, (this.height - PANEL_H) / 2);
         centerX = panelLeft + PANEL_W / 2;
-        int centerLeft = panelLeft + FLANK + MINI_GRID + 12;
+        centerLeft = panelLeft + FLANK + MINI_GRID + 12;
 
         gridX = centerLeft + 31;
         gridY = panelTop + HISTORY_TOP;
@@ -159,7 +166,7 @@ public class CraftleScreen extends Screen {
             addRenderableWidget(Button.builder(Component.literal("Back"), b -> setHelp(false))
                     .bounds(centerX + 52, panelTop + 178, 50, 20).build());
         } else {
-            int buttonY = panelTop + 158;
+            int buttonY = panelTop + BUTTON_TOP;
             int buttonsLeft = centerLeft + 4;
             craftButton = addRenderableWidget(Button.builder(Component.literal("Craft"), b -> submitGuess())
                     .bounds(buttonsLeft, buttonY, 58, 20).build());
@@ -476,6 +483,9 @@ public class CraftleScreen extends Screen {
             Chrome.slot(g, palX + (i % 6) * CELL + 1, palY + (i / 6) * CELL + 1);
         }
         Chrome.arrow(g, gridX + 60, outY + 1, 22);
+        // Marks the boundary between the ingredients and the action row.
+        g.fill(centerLeft + 6, panelTop + BUTTON_TOP - 8, centerLeft + CENTER_W - 6, panelTop + BUTTON_TOP - 7, Chrome.SLOT_SHADOW);
+        g.fill(centerLeft + 6, panelTop + BUTTON_TOP - 7, centerLeft + CENTER_W - 6, panelTop + BUTTON_TOP - 6, 0xFFFFFFFF);
     }
 
     @Override
@@ -597,9 +607,9 @@ public class CraftleScreen extends Screen {
     }
 
     private void drawStatusLines(GuiGraphicsExtractor g) {
-        int line1 = panelTop + 184;
-        int line2 = panelTop + 195;
-        int line3 = panelTop + 206;
+        int line1 = panelTop + 196;
+        int line2 = panelTop + 207;
+        int line3 = panelTop + 218;
 
         if (pendingIndex >= 0) {
             centered(g, "Crafting...", centerX, line1, TEXT_SOFT);
