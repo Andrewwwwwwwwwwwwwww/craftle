@@ -194,6 +194,9 @@ public class CraftleScreen extends Screen {
 
     private void setHelp(boolean help) {
         showHelp = help;
+        // Either way the widget set is swapped under the cursor, so a double-click's
+        // second press must not act on whatever now occupies that spot.
+        dismissedHelp = true;
         rebuildWidgets();
     }
 
@@ -359,6 +362,11 @@ public class CraftleScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         boolean closedHelp = dismissedHelp;
         dismissedHelp = false;
+        if (doubled && closedHelp) {
+            // Trailing press of the double-click that left the help page: the board's
+            // controls now sit under the cursor, so don't let it act on them.
+            return true;
+        }
 
         if (super.mouseClicked(event, doubled)) {
             // Drop the focus ring the container just put on the clicked button — it has
@@ -369,11 +377,7 @@ public class CraftleScreen extends Screen {
         }
         if (showHelp) {
             setHelp(false);
-            dismissedHelp = true;
             return true;
-        }
-        if (doubled && closedHelp) {
-            return true; // trailing press of the double-click that dismissed the help page
         }
 
         int mx = (int) event.x();
