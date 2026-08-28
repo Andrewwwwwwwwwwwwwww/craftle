@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "craftle",
+  "version": "${version}",
+  "name": "Craftle",
+  "description": "The daily crafting-recipe guessing game, in the game. Run /craftle for the global daily puzzle or /craftle random for endless practice. Place ingredients in the crafting grid and craft to guess: green = right ingredient in the right cell, orange = in the recipe but elsewhere, grey = not in the recipe. Ten guesses, nine previous attempts on screen for cross-referencing. Based on the web game Minecraftle (minecraftle.zachmanson.com).",
+  "authors": ["Andrewwwwwwwwwwwwwww"],
+  "license": "All Rights Reserved",
+  "environment": "*",
+  "entrypoints": {
+    "main": ["io.github.andrewwwwwwwwwwwwwww.craftle.Craftle"],
+    "client": ["io.github.andrewwwwwwwwwwwwwww.craftle.client.CraftleClient"]
+  },
+  "contact": {
+    "homepage": "https://github.com/Andrewwwwwwwwwwwwwww/craftle",
+    "sources": "https://github.com/Andrewwwwwwwwwwwwwww/craftle",
+    "issues": "https://github.com/Andrewwwwwwwwwwwwwww/craftle/issues"
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "fabric-api": ">=0.152.1",
+    "minecraft": "~26.2",
+    "java": ">=25"
+  }
+}
