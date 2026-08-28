@@ -52,7 +52,7 @@ canvas{image-rendering:pixelated;background:#111;margin:8px}
     ctx.fillRect(0, 0, S, S);
 
     // Grid block: a black rounded square whose gaps read as the frame and gridlines.
-    const gx = Math.round(126 * k), gy = Math.round(69 * k);   // centres grid+word in the square
+    const gx = Math.round(126 * k), gy = Math.round(63 * k);   // centres grid+word in the square
     const gw = Math.round(264 * k);
     const rad = Math.round(30 * k);
     const bor = Math.round(15 * k);
@@ -75,8 +75,8 @@ canvas{image-rendering:pixelated;background:#111;margin:8px}
     ctx.restore();
 
     // "Craftle" in the vanilla bitmap font, sized to sit under the grid at the grid's width.
-    const scale = Math.max(1, Math.round(8 * k));
-    drawMcText(ctx, 'Craftle', S / 2, gy + gw + Math.round(46 * k), scale, INK);
+    const scale = Math.max(1, Math.round(10 * k));
+    drawMcText(ctx, 'Craftle', S / 2, gy + gw + Math.round(42 * k), scale, INK);
   }
 
   function roundRect(ctx, x, y, w, h, r) {
