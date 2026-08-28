@@ -1,0 +1,148 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Craftle icon</title>
+<style>body{background:#2b2b2b;color:#ddd;font-family:sans-serif;margin:16px}
+canvas{image-rendering:pixelated;background:#111;margin:8px}
+.row{display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap}</style>
+</head>
+<body>
+<div class="row" id="out"></div>
+<script>
+(() => {
+  const SIZES = [512, 400, 128];
+  const BG     = '#e6e5e3';
+  const INK    = '#111111';
+  const WHITE  = '#ffffff';
+  const GREEN  = '#6aaa64';
+  const YELLOW = '#c9b458';
+
+  // Reference layout: top row blank, middle row blank/present/correct, bottom row all correct.
+  const TILES = [
+    [WHITE,  WHITE,  WHITE],
+    [WHITE,  YELLOW, GREEN],
+    [GREEN,  GREEN,  GREEN],
+  ];
+
+  const fontImg = new Image();
+  fontImg.onload = () => {
+    const out = document.getElementById('out');
+    const canvases = {};
+    for (const S of SIZES) {
+      const c = document.createElement('canvas');
+      c.width = c.height = S;
+      draw(c);
+      const wrap = document.createElement('div');
+      const lbl = document.createElement('div');
+      lbl.textContent = S + 'px';
+      wrap.appendChild(c); wrap.appendChild(lbl);
+      out.appendChild(wrap);
+      canvases[S] = c;
+    }
+    save(canvases);
+  };
+  fontImg.src = 'mc-ascii.png';
+
+  function draw(c) {
+    const S = c.width;
+    const k = S / 512;                     // everything is authored at 512
+    const ctx = c.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    ctx.fillStyle = BG;
+    ctx.fillRect(0, 0, S, S);
+
+    // Grid block: a black rounded square whose gaps read as the frame and gridlines.
+    const gx = Math.round(126 * k), gy = Math.round(69 * k);   // centres grid+word in the square
+    const gw = Math.round(264 * k);
+    const rad = Math.round(30 * k);
+    const bor = Math.round(15 * k);
+    const gap = Math.round(9 * k);
+    const cell = Math.round((gw - 2 * bor - 2 * gap) / 3);
+
+    ctx.fillStyle = INK;
+    roundRect(ctx, gx, gy, gw, gw, rad);
+    ctx.fill();
+
+    ctx.save();
+    roundRect(ctx, gx, gy, gw, gw, rad);
+    ctx.clip();                            // keeps the corner tiles inside the rounded frame
+    for (let r = 0; r < 3; r++) {
+      for (let col = 0; col < 3; col++) {
+        ctx.fillStyle = TILES[r][col];
+        ctx.fillRect(gx + bor + col * (cell + gap), gy + bor + r * (cell + gap), cell, cell);
+      }
+    }
+    ctx.restore();
+
+    // "Craftle" in the vanilla bitmap font, sized to sit under the grid at the grid's width.
+    const scale = Math.max(1, Math.round(8 * k));
+    drawMcText(ctx, 'Craftle', S / 2, gy + gw + Math.round(46 * k), scale, INK);
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y,     x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x,     y + h, r);
+    ctx.arcTo(x,     y + h, x,     y,     r);
+    ctx.arcTo(x,     y,     x + w, y,     r);
+    ctx.closePath();
+  }
+
+  /* Vanilla Minecraft bitmap font (ascii.png), per-glyph advance. */
+  function drawMcText(ctx, text, cx, topY, scale, color) {
+    const meas = document.createElement('canvas');
+    meas.width = 128; meas.height = 128;
+    const mctx = meas.getContext('2d');
+    mctx.drawImage(fontImg, 0, 0);
+    const widths = {};
+    for (const ch of new Set(text.split(''))) {
+      if (ch === ' ') { widths[ch] = 4; continue; }
+      const code = ch.charCodeAt(0);
+      const d = mctx.getImageData((code % 16) * 8, Math.floor(code / 16) * 8, 8, 8).data;
+      let w = 0;
+      for (let x = 0; x < 8; x++) {
+        for (let y = 0; y < 8; y++) {
+          if (d[(y * 8 + x) * 4 + 3] > 0) { w = x + 1; break; }
+        }
+      }
+      widths[ch] = (w || 4) + 1;
+    }
+    const total = text.split('').reduce((a, ch) => a + widths[ch], 0) - 1;
+    let penX = Math.round(cx - (total * scale) / 2);
+
+    for (const ch of text.split('')) {
+      if (ch !== ' ') {
+        const code = ch.charCodeAt(0);
+        const g = document.createElement('canvas');
+        g.width = 8; g.height = 8;
+        const gc = g.getContext('2d');
+        gc.imageSmoothingEnabled = false;
+        gc.drawImage(fontImg, (code % 16) * 8, Math.floor(code / 16) * 8, 8, 8, 0, 0, 8, 8);
+        gc.globalCompositeOperation = 'source-in';
+        gc.fillStyle = color;
+        gc.fillRect(0, 0, 8, 8);
+        ctx.drawImage(g, penX, topY, 8 * scale, 8 * scale);
+      }
+      penX += widths[ch] * scale;
+    }
+  }
+
+  function post(name, canvas) {
+    return fetch('http://localhost:7701/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, data: canvas.toDataURL('image/png').split(',')[1] })
+    });
+  }
+  function save(cs) {
+    post('icon-craftle-512', cs[512])
+      .then(() => post('icon-craftle-400', cs[400]))
+      .then(() => post('icon-craftle-128', cs[128]))
+      .then(() => { document.title = 'CRAFTLE-SAVED'; })
+      .catch(() => { document.title = 'CRAFTLE-SAVE-FAILED'; });
+  }
+})();
+</script>
+</body>
+</html>

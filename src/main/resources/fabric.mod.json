@@ -3,9 +3,10 @@
   "id": "craftle",
   "version": "${version}",
   "name": "Craftle",
-  "description": "The daily crafting-recipe guessing game, in the game. Run /craftle for the global daily puzzle or /craftle random for endless practice. Place ingredients in the crafting grid and craft to guess: green = right ingredient in the right cell, orange = in the recipe but elsewhere, grey = not in the recipe. Ten guesses, nine previous attempts on screen for cross-referencing. Based on the web game Minecraftle (minecraftle.zachmanson.com).",
+  "description": "The daily crafting-recipe guessing game, in the game. Run /craftle for the global daily puzzle or /craftle random for endless practice. Place ingredients in the crafting grid and craft to guess: green = right ingredient in the right cell, orange = in the recipe but elsewhere, grey = not in the recipe. Ten guesses, with every attempt kept on screen for cross-referencing, a live output slot that shows what your grid would craft, and a high contrast mode. Based on the web game Minecraftle (minecraftle.zachmanson.com).",
   "authors": ["Andrewwwwwwwwwwwwwww"],
   "license": "All Rights Reserved",
+  "icon": "assets/craftle/icon.png",
   "environment": "*",
   "entrypoints": {
     "main": ["io.github.andrewwwwwwwwwwwwwww.craftle.Craftle"],
