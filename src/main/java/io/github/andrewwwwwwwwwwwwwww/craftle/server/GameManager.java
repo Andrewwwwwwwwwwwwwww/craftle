@@ -1,10 +1,12 @@
 package io.github.andrewwwwwwwwwwwwwww.craftle.server;
 
+import io.github.andrewwwwwwwwwwwwwww.craftle.Craftle;
 import io.github.andrewwwwwwwwwwwwwww.craftle.ItemIds;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.CellState;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.DailyPicker;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.GameMode;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.GameStatus;
+import io.github.andrewwwwwwwwwwwwwww.craftle.game.GuessEvaluator;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.CraftleGame;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.Palette;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.PuzzleRecipe;
@@ -12,14 +14,19 @@ import io.github.andrewwwwwwwwwwwwwww.craftle.net.GridBytes;
 import io.github.andrewwwwwwwwwwwwwww.craftle.net.GuessPayload;
 import io.github.andrewwwwwwwwwwwwwww.craftle.net.GuessResultPayload;
 import io.github.andrewwwwwwwwwwwwwww.craftle.net.OpenGamePayload;
+import io.github.andrewwwwwwwwwwwwwww.craftle.net.PreviewPayload;
+import io.github.andrewwwwwwwwwwwwwww.craftle.net.PreviewResultPayload;
 import io.github.andrewwwwwwwwwwwwwww.craftle.net.StatsSnapshot;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.crafting.CraftingInput;
+import net.minecraft.world.item.crafting.RecipeType;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -233,6 +240,49 @@ public final class GameManager {
             sendRandomResultMessage(player, game);
         }
         ServerPlayNetworking.send(player, resultPayload(game, colors, record.stats().snapshot()));
+    }
+
+    // ------------------------------------------------------------------ output preview
+
+    /**
+     * Answers "what would this arrangement craft?" so the client's output slot behaves
+     * like a real crafting table. Uses only the public recipe registry — it reveals
+     * nothing about the puzzle that a crafting table wouldn't.
+     */
+    public static void handlePreview(ServerPlayer player, PreviewPayload payload) {
+        if (!GridBytes.isValidGrid(payload.cells(), Palette.SIZE)) {
+            return;
+        }
+        List<ItemStack> stacks = new ArrayList<>(GuessEvaluator.GRID_SIZE);
+        boolean any = false;
+        for (byte cell : payload.cells()) {
+            if (cell == GuessEvaluator.NO_ITEM) {
+                stacks.add(ItemStack.EMPTY);
+            } else {
+                stacks.add(new ItemStack(ItemIds.resolve(Palette.ITEM_IDS.get(cell))));
+                any = true;
+            }
+        }
+        if (!any) {
+            ServerPlayNetworking.send(player, new PreviewResultPayload(payload.cells(), "", 0));
+            return;
+        }
+
+        ItemStack result = ItemStack.EMPTY;
+        try {
+            CraftingInput input = CraftingInput.of(3, 3, stacks);
+            ServerLevel level = player.level();
+            result = player.level().getServer().getRecipeManager()
+                    .getRecipeFor(RecipeType.CRAFTING, input, level)
+                    .map(holder -> holder.value().assemble(input))
+                    .orElse(ItemStack.EMPTY);
+        } catch (Exception e) {
+            Craftle.LOGGER.debug("[Craftle] preview lookup failed", e);
+        }
+
+        ServerPlayNetworking.send(player, result.isEmpty()
+                ? new PreviewResultPayload(payload.cells(), "", 0)
+                : new PreviewResultPayload(payload.cells(), ItemIds.idOf(result.getItem()), result.getCount()));
     }
 
     // ------------------------------------------------------------------ messaging

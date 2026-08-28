@@ -3,6 +3,8 @@ package io.github.andrewwwwwwwwwwwwwww.craftle;
 import io.github.andrewwwwwwwwwwwwwww.craftle.net.GuessPayload;
 import io.github.andrewwwwwwwwwwwwwww.craftle.net.GuessResultPayload;
 import io.github.andrewwwwwwwwwwwwwww.craftle.net.OpenGamePayload;
+import io.github.andrewwwwwwwwwwwwwww.craftle.net.PreviewPayload;
+import io.github.andrewwwwwwwwwwwwwww.craftle.net.PreviewResultPayload;
 import io.github.andrewwwwwwwwwwwwwww.craftle.server.GameManager;
 import io.github.andrewwwwwwwwwwwwwww.craftle.server.RecipePool;
 import net.fabricmc.api.ModInitializer;
@@ -24,12 +26,21 @@ public class Craftle implements ModInitializer {
     public void onInitialize() {
         PayloadTypeRegistry.clientboundPlay().register(OpenGamePayload.TYPE, OpenGamePayload.CODEC);
         PayloadTypeRegistry.clientboundPlay().register(GuessResultPayload.TYPE, GuessResultPayload.CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(PreviewResultPayload.TYPE, PreviewResultPayload.CODEC);
         PayloadTypeRegistry.serverboundPlay().register(GuessPayload.TYPE, GuessPayload.CODEC);
+        PayloadTypeRegistry.serverboundPlay().register(PreviewPayload.TYPE, PreviewPayload.CODEC);
 
         ServerPlayNetworking.registerGlobalReceiver(GuessPayload.TYPE, (payload, context) -> {
             MinecraftServer server = context.server();
             if (server != null) {
                 server.execute(() -> GameManager.handleGuess(context.player(), payload));
+            }
+        });
+
+        ServerPlayNetworking.registerGlobalReceiver(PreviewPayload.TYPE, (payload, context) -> {
+            MinecraftServer server = context.server();
+            if (server != null) {
+                server.execute(() -> GameManager.handlePreview(context.player(), payload));
             }
         });
 

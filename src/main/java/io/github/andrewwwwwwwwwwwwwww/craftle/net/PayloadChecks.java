@@ -60,6 +60,13 @@ public final class PayloadChecks {
                 && p.resultCount() >= 0 && p.resultCount() <= MAX_RESULT_COUNT;
     }
 
+    /** A preview answer is usable only with a real item id and a sane stack count. */
+    public static boolean validPreview(PreviewResultPayload p) {
+        return !p.itemId().isEmpty()
+                && p.count() > 0 && p.count() <= MAX_RESULT_COUNT
+                && p.cells().length == GuessEvaluator.GRID_SIZE;
+    }
+
     private static boolean validColors(byte[] colors) {
         if (colors.length != GuessEvaluator.GRID_SIZE) {
             return false;
