@@ -32,9 +32,9 @@ import java.util.List;
 
 /**
  * The Craftle board: a 3x3 crafting grid with a live output slot, the ingredient palette
- * below it, and previous guesses as color-coded mini grids flanking the sides. Submitting
- * a guess clears the grid and moves that attempt into the flanks, so the board is always
- * ready for the next try.
+ * below it, and previous guesses as color-coded mini grids flanking the sides. A submitted
+ * guess appears in the flanks at once and also stays on the board, so the next attempt is a
+ * tweak of the last one rather than a rebuild.
  */
 public class CraftleScreen extends Screen {
     private static final int CELL = 18;
@@ -83,8 +83,6 @@ public class CraftleScreen extends Screen {
 
     /** Index of the guess awaiting its server feedback, or -1. */
     private int pendingIndex = -1;
-    /** Kept so a rejected guess can be put back on the board instead of vanishing. */
-    private int[] pendingGrid;
     /** What the current grid would craft, mirrored from the server. */
     private ItemStack previewStack = ItemStack.EMPTY;
     private byte[] previewSentFor;
@@ -127,12 +125,11 @@ public class CraftleScreen extends Screen {
         if (status == GameStatus.LOST && payload.answer().length == GuessEvaluator.GRID_SIZE) {
             // Show the recipe that beat you.
             System.arraycopy(GridBytes.toGrid(payload.answer()), 0, grid, 0, grid.length);
-        } else if (status == GameStatus.WON && !guesses.isEmpty()) {
-            // Leave the winning arrangement up.
+        } else if (!guesses.isEmpty()) {
+            // The board keeps your last attempt, so the next guess is a tweak, not a rebuild.
             System.arraycopy(guesses.get(guesses.size() - 1), 0, grid, 0, grid.length);
             gridColors = results.get(results.size() - 1);
         }
-        // An in-progress game always opens with an empty board; past guesses live in the flanks.
     }
 
     // ------------------------------------------------------------------ layout
@@ -198,12 +195,17 @@ public class CraftleScreen extends Screen {
             return; // help page is up; the board's controls don't exist right now
         }
         boolean canPlay = canEdit();
-        craftButton.active = canPlay && !isGridEmpty();
+        craftButton.active = canPlay && !isGridEmpty() && !repeatsLastGuess();
         clearButton.active = canPlay && !isGridEmpty();
     }
 
     private boolean canEdit() {
         return status == GameStatus.IN_PROGRESS && pendingIndex < 0 && !showHelp;
+    }
+
+    /** Re-submitting an identical arrangement would only burn a guess for the same answer. */
+    private boolean repeatsLastGuess() {
+        return !guesses.isEmpty() && Arrays.equals(grid, guesses.get(guesses.size() - 1));
     }
 
     private boolean isGridEmpty() {
@@ -221,20 +223,17 @@ public class CraftleScreen extends Screen {
         if (!canEdit() || isGridEmpty()) {
             return;
         }
-        // Hand the attempt straight to the history and clear the board for the next try;
-        // its colors fill in when the server answers.
-        pendingGrid = grid.clone();
-        guesses.add(grid.clone());
+        // The attempt joins the side history immediately (its colors fill in when the
+        // server answers) while the board keeps it, ready to be tweaked into the next guess.
+        int[] guess = grid.clone();
+        guesses.add(guess);
         CellState[] blank = new CellState[GuessEvaluator.GRID_SIZE];
         Arrays.fill(blank, CellState.EMPTY);
         results.add(blank);
         pendingIndex = guesses.size() - 1;
-
-        Arrays.fill(grid, GuessEvaluator.NO_ITEM);
         gridColors = null;
         updateButtons();
-        requestPreview();
-        ClientPlayNetworking.send(new GuessPayload(mode.id(), GridBytes.fromGrid(pendingGrid)));
+        ClientPlayNetworking.send(new GuessPayload(mode.id(), GridBytes.fromGrid(guess)));
     }
 
     private void clearGrid() {
@@ -242,7 +241,18 @@ public class CraftleScreen extends Screen {
             return;
         }
         Arrays.fill(grid, GuessEvaluator.NO_ITEM);
-        gridColors = null;
+        onGridEdited();
+    }
+
+    /**
+     * After any change to the board: the feedback overlay belongs to the last graded guess,
+     * so it shows exactly while the board still holds that arrangement — including when an
+     * edit is undone back to it.
+     */
+    private void onGridEdited() {
+        gridColors = repeatsLastGuess() && pendingIndex < 0 && !results.isEmpty()
+                ? results.get(results.size() - 1)
+                : null;
         updateButtons();
         requestPreview();
     }
@@ -283,16 +293,11 @@ public class CraftleScreen extends Screen {
 
         if (!PayloadChecks.validResult(payload, palette.size())
                 || payload.colors().length != GuessEvaluator.GRID_SIZE) {
-            // Rejected (or malformed): take the attempt back off the history and hand the
-            // arrangement back to the player rather than losing their work.
+            // Rejected (or malformed): take the attempt back off the history. The board
+            // still holds the arrangement, so nothing the player built is lost.
             guesses.remove(index);
             results.remove(index);
-            if (pendingGrid != null) {
-                System.arraycopy(pendingGrid, 0, grid, 0, grid.length);
-            }
-            gridColors = null;
-            updateButtons();
-            requestPreview();
+            onGridEdited();
             return;
         }
 
@@ -300,17 +305,16 @@ public class CraftleScreen extends Screen {
         results.set(index, colors);
         status = GameStatus.byId(payload.status());
         stats = payload.stats();
+        // The board still holds this guess, so light it up with its feedback.
+        gridColors = colors;
 
         if (status.finished()) {
             if (!payload.resultItemId().isEmpty()) {
                 resultStack = new ItemStack(ItemIds.resolve(payload.resultItemId()),
                         Math.max(1, payload.resultCount()));
             }
-            if (status == GameStatus.WON) {
-                // Put the winning arrangement back up as the centrepiece.
-                System.arraycopy(guesses.get(index), 0, grid, 0, grid.length);
-                gridColors = colors;
-            } else if (payload.answer().length == GuessEvaluator.GRID_SIZE) {
+            if (status == GameStatus.LOST && payload.answer().length == GuessEvaluator.GRID_SIZE) {
+                // Hand the board over to the recipe that beat you.
                 System.arraycopy(GridBytes.toGrid(payload.answer()), 0, grid, 0, grid.length);
                 gridColors = null;
             }
@@ -380,20 +384,18 @@ public class CraftleScreen extends Screen {
             if (event.button() == 1) {
                 if (grid[cell] != GuessEvaluator.NO_ITEM) {
                     grid[cell] = GuessEvaluator.NO_ITEM;
-                    gridColors = null;
+                    onGridEdited();
                     click();
-                    updateButtons();
-                    requestPreview();
                 }
                 return true;
             }
             if (event.button() == 0) {
                 if (selected >= 0) {
-                    grid[cell] = selected;
-                    gridColors = null;
+                    if (grid[cell] != selected) {
+                        grid[cell] = selected;
+                        onGridEdited();
+                    }
                     click();
-                    updateButtons();
-                    requestPreview();
                 } else if (grid[cell] != GuessEvaluator.NO_ITEM) {
                     selected = grid[cell];
                     click();
@@ -556,13 +558,13 @@ public class CraftleScreen extends Screen {
     }
 
     /**
-     * Previous guesses as mini grids, oldest first: five down the left flank, four more
-     * down the right. Only a finished win keeps its guess on the main grid instead.
+     * Every guess as a mini grid, oldest first: five down the left flank, five more down
+     * the right. The newest appears here the moment it is submitted, even though the board
+     * is still holding it for editing.
      */
     private void drawHistory(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        int total = status == GameStatus.WON ? guesses.size() - 1 : guesses.size();
-        // Cap by the number of slots the flanks actually have, not by the guess limit —
-        // every guess needs one now that the board clears on craft.
+        int total = guesses.size();
+        // Cap by the number of slots the flanks actually have, not by the guess limit.
         int shown = Math.min(total, HISTORY_ROWS * 2);
         int first = Math.max(0, total - shown);
 
@@ -608,8 +610,15 @@ public class CraftleScreen extends Screen {
             case IN_PROGRESS -> {
                 centered(g, "Guess " + (guesses.size() + 1) + " of " + CraftleGame.MAX_GUESSES,
                         centerX, line1, TEXT_SOFT);
-                centered(g, selected >= 0 ? "Click to place · right-click clears"
-                        : "Pick an ingredient above", centerX, line2, TEXT_SOFT);
+                String hint;
+                if (repeatsLastGuess()) {
+                    hint = "Change a cell to guess again";
+                } else if (selected >= 0) {
+                    hint = "Click to place · right-click clears";
+                } else {
+                    hint = "Pick an ingredient above";
+                }
+                centered(g, hint, centerX, line2, TEXT_SOFT);
             }
             case WON -> {
                 centered(g, "Solved in " + guesses.size() + " of " + CraftleGame.MAX_GUESSES + "!",
