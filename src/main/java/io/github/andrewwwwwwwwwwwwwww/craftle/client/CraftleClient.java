@@ -12,6 +12,8 @@ public class CraftleClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        CraftleConfig.load();
+
         ClientPlayNetworking.registerGlobalReceiver(OpenGamePayload.TYPE, (payload, context) ->
                 context.client().execute(() -> {
                     if (!PayloadChecks.validOpen(payload)) {

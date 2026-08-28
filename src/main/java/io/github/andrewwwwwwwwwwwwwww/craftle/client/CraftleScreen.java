@@ -18,6 +18,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
@@ -30,10 +31,10 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * The Craftle board: active 3x3 crafting grid with a live output slot in the middle, the
- * ingredient palette below it, and up to nine previous guesses as color-coded mini grids
- * flanking the sides for cross-referencing. The latest guess stays on the main grid with
- * its feedback overlaid.
+ * The Craftle board: a 3x3 crafting grid with a live output slot, the ingredient palette
+ * below it, and previous guesses as color-coded mini grids flanking the sides. Submitting
+ * a guess clears the grid and moves that attempt into the flanks, so the board is always
+ * ready for the next try.
  */
 public class CraftleScreen extends Screen {
     private static final int CELL = 18;
@@ -47,10 +48,17 @@ public class CraftleScreen extends Screen {
     private static final int CENTER_W = 168;
     private static final int PANEL_W = FLANK + MINI_GRID + 12 + CENTER_W + 12 + MINI_GRID + FLANK;
     private static final int PANEL_H = 224;
+    /** Widest a help-overlay line may be before it leaves the dark scrim. */
+    private static final int HELP_W = PANEL_W - 44;
 
-    private static final int COLOR_CORRECT = 0xFF43A047;
-    private static final int COLOR_PRESENT = 0xFFDD9A28;
-    private static final int COLOR_ABSENT = 0xFF5A5A5A;
+    private static final int GREEN = 0xFF43A047;
+    private static final int ORANGE = 0xFFDD9A28;
+    private static final int GREY = 0xFF5A5A5A;
+    // Colorblind-friendly pair: blue reads clearly against orange for red-green deficiency.
+    private static final int HC_BLUE = 0xFF2D7DD2;
+    private static final int HC_ORANGE = 0xFFF07E13;
+    private static final int HC_GREY = 0xFF4A4A4A;
+
     private static final int COLOR_SELECTION = 0xFFFFD24A;
     private static final int TEXT_DARK = 0xFF3F3F3F;
     private static final int TEXT_SOFT = 0xFF6A6A6A;
@@ -70,15 +78,20 @@ public class CraftleScreen extends Screen {
     private CellState[] gridColors;
     private int selected = -1;
     private boolean showHelp;
+    /** Set when a click closed the help page, so a double-click's second press isn't played. */
+    private boolean dismissedHelp;
 
-    /** Index of the optimistically-shown guess awaiting its server feedback, or -1. */
+    /** Index of the guess awaiting its server feedback, or -1. */
     private int pendingIndex = -1;
+    /** Kept so a rejected guess can be put back on the board instead of vanishing. */
+    private int[] pendingGrid;
     /** What the current grid would craft, mirrored from the server. */
     private ItemStack previewStack = ItemStack.EMPTY;
     private byte[] previewSentFor;
 
     private Button craftButton;
     private Button clearButton;
+    private Button contrastButton;
 
     private int panelLeft;
     private int panelTop;
@@ -112,12 +125,14 @@ public class CraftleScreen extends Screen {
 
         Arrays.fill(grid, GuessEvaluator.NO_ITEM);
         if (status == GameStatus.LOST && payload.answer().length == GuessEvaluator.GRID_SIZE) {
-            // Reveal the recipe arrangement on the main grid after a loss.
+            // Show the recipe that beat you.
             System.arraycopy(GridBytes.toGrid(payload.answer()), 0, grid, 0, grid.length);
-        } else if (!guesses.isEmpty()) {
+        } else if (status == GameStatus.WON && !guesses.isEmpty()) {
+            // Leave the winning arrangement up.
             System.arraycopy(guesses.get(guesses.size() - 1), 0, grid, 0, grid.length);
             gridColors = results.get(results.size() - 1);
         }
+        // An in-progress game always opens with an empty board; past guesses live in the flanks.
     }
 
     // ------------------------------------------------------------------ layout
@@ -136,22 +151,52 @@ public class CraftleScreen extends Screen {
         palX = centerLeft + 30;
         palY = panelTop + 98;
 
-        int buttonY = panelTop + 158;
-        int buttonsLeft = centerLeft + 4;
-        craftButton = addRenderableWidget(Button.builder(Component.literal("Craft"), b -> submitGuess())
-                .bounds(buttonsLeft, buttonY, 58, 20).build());
-        clearButton = addRenderableWidget(Button.builder(Component.literal("Clear"), b -> clearGrid())
-                .bounds(buttonsLeft + 62, buttonY, 46, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
-                .bounds(buttonsLeft + 112, buttonY, 48, 20).build());
-        addRenderableWidget(Button.builder(Component.literal("?"), b -> showHelp = !showHelp)
-                .bounds(panelLeft + PANEL_W - 22, panelTop + 5, 16, 16).build());
+        // The help page takes over the whole panel, so only its own controls exist while
+        // it is open — a hidden widget can't then swallow a click through the overlay.
+        craftButton = null;
+        clearButton = null;
+        contrastButton = null;
+        if (showHelp) {
+            contrastButton = addRenderableWidget(Button.builder(contrastLabel(), b -> toggleContrast())
+                    .bounds(centerX - 102, panelTop + 178, 150, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("Back"), b -> setHelp(false))
+                    .bounds(centerX + 52, panelTop + 178, 50, 20).build());
+        } else {
+            int buttonY = panelTop + 158;
+            int buttonsLeft = centerLeft + 4;
+            craftButton = addRenderableWidget(Button.builder(Component.literal("Craft"), b -> submitGuess())
+                    .bounds(buttonsLeft, buttonY, 58, 20).build());
+            clearButton = addRenderableWidget(Button.builder(Component.literal("Clear"), b -> clearGrid())
+                    .bounds(buttonsLeft + 62, buttonY, 46, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("Close"), b -> onClose())
+                    .bounds(buttonsLeft + 112, buttonY, 48, 20).build());
+            addRenderableWidget(Button.builder(Component.literal("?"), b -> setHelp(true))
+                    .bounds(panelLeft + PANEL_W - 22, panelTop + 5, 16, 16).build());
+        }
 
         updateButtons();
         requestPreview();
     }
 
+    private Component contrastLabel() {
+        return Component.literal("High Contrast: " + (CraftleConfig.highContrast ? "ON" : "OFF"));
+    }
+
+    private void toggleContrast() {
+        CraftleConfig.highContrast = !CraftleConfig.highContrast;
+        CraftleConfig.save();
+        contrastButton.setMessage(contrastLabel());
+    }
+
+    private void setHelp(boolean help) {
+        showHelp = help;
+        rebuildWidgets();
+    }
+
     private void updateButtons() {
+        if (craftButton == null) {
+            return; // help page is up; the board's controls don't exist right now
+        }
         boolean canPlay = canEdit();
         craftButton.active = canPlay && !isGridEmpty();
         clearButton.active = canPlay && !isGridEmpty();
@@ -176,15 +221,20 @@ public class CraftleScreen extends Screen {
         if (!canEdit() || isGridEmpty()) {
             return;
         }
-        // Show the attempt immediately; the colors fill in when the server answers.
+        // Hand the attempt straight to the history and clear the board for the next try;
+        // its colors fill in when the server answers.
+        pendingGrid = grid.clone();
         guesses.add(grid.clone());
         CellState[] blank = new CellState[GuessEvaluator.GRID_SIZE];
         Arrays.fill(blank, CellState.EMPTY);
         results.add(blank);
         pendingIndex = guesses.size() - 1;
+
+        Arrays.fill(grid, GuessEvaluator.NO_ITEM);
         gridColors = null;
         updateButtons();
-        ClientPlayNetworking.send(new GuessPayload(mode.id(), GridBytes.fromGrid(grid)));
+        requestPreview();
+        ClientPlayNetworking.send(new GuessPayload(mode.id(), GridBytes.fromGrid(pendingGrid)));
     }
 
     private void clearGrid() {
@@ -233,17 +283,21 @@ public class CraftleScreen extends Screen {
 
         if (!PayloadChecks.validResult(payload, palette.size())
                 || payload.colors().length != GuessEvaluator.GRID_SIZE) {
-            // Rejected (or malformed): take the optimistic attempt back off the board.
+            // Rejected (or malformed): take the attempt back off the history and hand the
+            // arrangement back to the player rather than losing their work.
             guesses.remove(index);
             results.remove(index);
+            if (pendingGrid != null) {
+                System.arraycopy(pendingGrid, 0, grid, 0, grid.length);
+            }
             gridColors = null;
             updateButtons();
+            requestPreview();
             return;
         }
 
         CellState[] colors = GridBytes.toResults(payload.colors());
         results.set(index, colors);
-        gridColors = colors;
         status = GameStatus.byId(payload.status());
         stats = payload.stats();
 
@@ -252,7 +306,11 @@ public class CraftleScreen extends Screen {
                 resultStack = new ItemStack(ItemIds.resolve(payload.resultItemId()),
                         Math.max(1, payload.resultCount()));
             }
-            if (status == GameStatus.LOST && payload.answer().length == GuessEvaluator.GRID_SIZE) {
+            if (status == GameStatus.WON) {
+                // Put the winning arrangement back up as the centrepiece.
+                System.arraycopy(guesses.get(index), 0, grid, 0, grid.length);
+                gridColors = colors;
+            } else if (payload.answer().length == GuessEvaluator.GRID_SIZE) {
                 System.arraycopy(GridBytes.toGrid(payload.answer()), 0, grid, 0, grid.length);
                 gridColors = null;
             }
@@ -278,12 +336,19 @@ public class CraftleScreen extends Screen {
     // ------------------------------------------------------------------ input
 
     @Override
-    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
-        if (showHelp) {
-            showHelp = false;
-            updateButtons();
+    public boolean keyPressed(KeyEvent event) {
+        if (showHelp && event.isEscape()) {
+            setHelp(false); // Escape means "back", not "quit the game"
             return true;
         }
+        return super.keyPressed(event);
+    }
+
+    @Override
+    public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
+        boolean closedHelp = dismissedHelp;
+        dismissedHelp = false;
+
         if (super.mouseClicked(event, doubled)) {
             // Drop the focus ring the container just put on the clicked button — it has
             // to happen after dispatch, since the container re-focuses on the way out.
@@ -291,6 +356,15 @@ public class CraftleScreen extends Screen {
             updateButtons();
             return true;
         }
+        if (showHelp) {
+            setHelp(false);
+            dismissedHelp = true;
+            return true;
+        }
+        if (doubled && closedHelp) {
+            return true; // trailing press of the double-click that dismissed the help page
+        }
+
         int mx = (int) event.x();
         int my = (int) event.y();
 
@@ -357,9 +431,6 @@ public class CraftleScreen extends Screen {
 
     // ------------------------------------------------------------------ rendering
 
-    /** Widest a help-overlay line may be before it leaves the dark scrim. */
-    private static final int HELP_W = PANEL_W - 44;
-
     private void text(GuiGraphicsExtractor g, String s, int x, int y, int color) {
         g.text(this.font, fit(s, HELP_W), x, y, color, false);
     }
@@ -389,6 +460,12 @@ public class CraftleScreen extends Screen {
     public void extractBackground(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         super.extractBackground(g, mouseX, mouseY, partialTick);
         Chrome.panel(g, panelLeft, panelTop, PANEL_W, PANEL_H);
+        if (showHelp) {
+            // The help page is background, not overlay — widgets render after this, so its
+            // own buttons sit on top of the scrim instead of under it.
+            drawHelp(g);
+            return;
+        }
         for (int i = 0; i < GuessEvaluator.GRID_SIZE; i++) {
             Chrome.slot(g, gridX + (i % 3) * CELL + 1, gridY + (i / 3) * CELL + 1);
         }
@@ -402,6 +479,9 @@ public class CraftleScreen extends Screen {
     @Override
     public void extractRenderState(GuiGraphicsExtractor g, int mouseX, int mouseY, float partialTick) {
         super.extractRenderState(g, mouseX, mouseY, partialTick);
+        if (showHelp) {
+            return; // the board is hidden behind the help page
+        }
 
         centered(g, subtitle(), centerX, panelTop + 8, TEXT_DARK);
 
@@ -410,10 +490,6 @@ public class CraftleScreen extends Screen {
         drawPalette(g, mouseX, mouseY);
         drawHistory(g, mouseX, mouseY);
         drawStatusLines(g);
-
-        if (showHelp) {
-            drawHelp(g);
-        }
     }
 
     private String subtitle() {
@@ -439,7 +515,7 @@ public class CraftleScreen extends Screen {
             int x = gridX + (hovered % 3) * CELL + 1;
             int y = gridY + (hovered / 3) * CELL + 1;
             g.fill(x, y, x + 16, y + 16, 0x66FFFFFF);
-            if (grid[hovered] != GuessEvaluator.NO_ITEM && !showHelp) {
+            if (grid[hovered] != GuessEvaluator.NO_ITEM) {
                 g.setTooltipForNextFrame(this.font, palette.get(grid[hovered]), mouseX, mouseY);
             }
         }
@@ -453,7 +529,7 @@ public class CraftleScreen extends Screen {
         if (!shown.isEmpty()) {
             g.item(shown, x, y);
             g.itemDecorations(this.font, shown, x, y);
-            if (mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16 && !showHelp) {
+            if (mouseX >= x && mouseX < x + 16 && mouseY >= y && mouseY < y + 16) {
                 g.setTooltipForNextFrame(this.font, shown, mouseX, mouseY);
             }
         } else {
@@ -475,22 +551,19 @@ public class CraftleScreen extends Screen {
             int x = palX + (hovered % 6) * CELL + 1;
             int y = palY + (hovered / 6) * CELL + 1;
             g.fill(x, y, x + 16, y + 16, 0x66FFFFFF);
-            if (!showHelp) {
-                g.setTooltipForNextFrame(this.font, palette.get(hovered), mouseX, mouseY);
-            }
+            g.setTooltipForNextFrame(this.font, palette.get(hovered), mouseX, mouseY);
         }
     }
 
     /**
-     * Previous guesses as mini grids: up to five down the left flank, four more down the
-     * right, newest last. A guess is only left out when the main grid is still showing it
-     * (right after its result, or while its result is in flight) — the moment the player
-     * starts editing, it moves into the flanks so its feedback is never lost.
+     * Previous guesses as mini grids, oldest first: five down the left flank, four more
+     * down the right. Only a finished win keeps its guess on the main grid instead.
      */
     private void drawHistory(GuiGraphicsExtractor g, int mouseX, int mouseY) {
-        boolean latestOnGrid = gridColors != null || pendingIndex >= 0;
-        int total = latestOnGrid ? guesses.size() - 1 : guesses.size();
-        int shown = Math.min(total, CraftleGame.MAX_GUESSES - 1);
+        int total = status == GameStatus.WON ? guesses.size() - 1 : guesses.size();
+        // Cap by the number of slots the flanks actually have, not by the guess limit —
+        // every guess needs one now that the board clears on craft.
+        int shown = Math.min(total, HISTORY_ROWS * 2);
         int first = Math.max(0, total - shown);
 
         for (int n = 0; n < shown; n++) {
@@ -513,7 +586,7 @@ public class CraftleScreen extends Screen {
                     g.item(palette.get(guess[i]), 0, 0);
                     pose.popMatrix();
                 }
-                if (!showHelp && mouseX >= x && mouseX < x + MINI && mouseY >= y && mouseY < y + MINI
+                if (mouseX >= x && mouseX < x + MINI && mouseY >= y && mouseY < y + MINI
                         && guess[i] != GuessEvaluator.NO_ITEM) {
                     g.setTooltipForNextFrame(this.font, palette.get(guess[i]), mouseX, mouseY);
                 }
@@ -535,10 +608,8 @@ public class CraftleScreen extends Screen {
             case IN_PROGRESS -> {
                 centered(g, "Guess " + (guesses.size() + 1) + " of " + CraftleGame.MAX_GUESSES,
                         centerX, line1, TEXT_SOFT);
-                // Keep every centered line under ~190px: wider than that and it reaches
-                // into the history flanks either side.
                 centered(g, selected >= 0 ? "Click to place · right-click clears"
-                        : "Pick an ingredient below", centerX, line2, TEXT_SOFT);
+                        : "Pick an ingredient above", centerX, line2, TEXT_SOFT);
             }
             case WON -> {
                 centered(g, "Solved in " + guesses.size() + " of " + CraftleGame.MAX_GUESSES + "!",
@@ -574,38 +645,34 @@ public class CraftleScreen extends Screen {
     private void drawHelp(GuiGraphicsExtractor g) {
         g.fill(panelLeft + 4, panelTop + 4, panelLeft + PANEL_W - 4, panelTop + PANEL_H - 4, 0xF5202020);
         int x = panelLeft + 20;
-        int y = panelTop + 16;
+        int y = panelTop + 14;
         centered(g, "How to Play", centerX, y, 0xFFFFFFFF, HELP_W);
-        y += 18;
-        // Every line must measure under ~248px to stay inside the dark scrim.
+        y += 16;
         String[] lines = {
                 "Guess the hidden recipe in " + CraftleGame.MAX_GUESSES + " tries.",
                 "Pick an ingredient, then click the grid",
                 "to place it. Right-click clears a cell.",
-                "Press Craft to submit your guess.",
                 "The output slot shows what you'd craft.",
         };
         for (String line : lines) {
             text(g, line, x, y, 0xFFDDDDDD);
             y += 12;
         }
-        y += 6;
-        y = legendLine(g, x, y, COLOR_CORRECT, "Right ingredient, in the right cell");
-        y = legendLine(g, x, y, COLOR_PRESENT, "In the recipe, but somewhere else");
-        y = legendLine(g, x, y, COLOR_ABSENT, "Not in the recipe");
-        y += 6;
+        y += 5;
+        y = legendLine(g, x, y, overlayColor(CellState.CORRECT), "Right ingredient, right cell");
+        y = legendLine(g, x, y, overlayColor(CellState.PRESENT), "In the recipe, but elsewhere");
+        y = legendLine(g, x, y, overlayColor(CellState.ABSENT), "Not in the recipe");
+        y += 5;
         String[] tail = {
-                "Empty cells give no hints, and recipes are",
-                "anchored to the top-left of the grid.",
-                "The daily resets at midnight UTC and is the",
-                "same puzzle for everyone. /craftle random",
-                "deals endless practice puzzles.",
+                "Empty cells give no hints, and recipes",
+                "anchor to the top-left of the grid.",
+                "The daily resets at midnight UTC and is",
+                "the same puzzle for everyone.",
         };
         for (String line : tail) {
             text(g, line, x, y, 0xFFDDDDDD);
             y += 12;
         }
-        centered(g, "Click anywhere to close", centerX, panelTop + PANEL_H - 18, 0xFF9E9E9E, HELP_W);
     }
 
     private int legendLine(GuiGraphicsExtractor g, int x, int y, int color, String label) {
@@ -615,10 +682,11 @@ public class CraftleScreen extends Screen {
     }
 
     private static int overlayColor(CellState state) {
+        boolean hc = CraftleConfig.highContrast;
         return switch (state) {
-            case CORRECT -> COLOR_CORRECT;
-            case PRESENT -> COLOR_PRESENT;
-            default -> COLOR_ABSENT;
+            case CORRECT -> hc ? HC_BLUE : GREEN;
+            case PRESENT -> hc ? HC_ORANGE : ORANGE;
+            default -> hc ? HC_GREY : GREY;
         };
     }
 
