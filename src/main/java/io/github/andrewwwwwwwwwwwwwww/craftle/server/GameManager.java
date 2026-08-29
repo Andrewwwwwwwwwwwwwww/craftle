@@ -112,7 +112,7 @@ public final class GameManager {
     }
 
     private static void notifyNewDaily(ServerPlayer player, MinecraftServer server) {
-        if (RecipePool.pool().isEmpty()
+        if (RecipePool.isEmpty()
                 || !ServerPlayNetworking.canSend(player, OpenGamePayload.TYPE)) {
             return; // nothing to play, or this client can't open the board anyway
         }
@@ -155,8 +155,10 @@ public final class GameManager {
         PlayerRecord record = state.record(id);
         StoredGame stored = record.daily().orElse(null);
         if (stored == null || stored.day() != today) {
-            List<PuzzleRecipe> pool = RecipePool.pool();
-            PuzzleRecipe puzzle = pool.get(DailyPicker.pickIndex(today, pool.size()));
+            PuzzleRecipe puzzle = RecipePool.daily(today);
+            if (puzzle == null) {
+                return;
+            }
             stored = StoredGame.fresh(today, puzzle.recipeId(), puzzle.grid(),
                     puzzle.resultItemId(), puzzle.resultCount());
             record = record.withDaily(stored);
@@ -167,8 +169,10 @@ public final class GameManager {
         CraftleGame game = stored.rehydrate(GameMode.DAILY);
         if (game == null) {
             // Corrupted save entry — replace it with a fresh game for today.
-            List<PuzzleRecipe> pool = RecipePool.pool();
-            PuzzleRecipe puzzle = pool.get(DailyPicker.pickIndex(today, pool.size()));
+            PuzzleRecipe puzzle = RecipePool.daily(today);
+            if (puzzle == null) {
+                return;
+            }
             stored = StoredGame.fresh(today, puzzle.recipeId(), puzzle.grid(),
                     puzzle.resultItemId(), puzzle.resultCount());
             state.put(id, record.withDaily(stored));
@@ -198,7 +202,10 @@ public final class GameManager {
             game = null;
         }
         if (game == null || game.status().finished()) {
-            PuzzleRecipe puzzle = pickRandomPuzzle();
+            PuzzleRecipe puzzle = RecipePool.practice(RNG, DailyPicker.todayUtc());
+            if (puzzle == null) {
+                return;
+            }
             stored = StoredGame.fresh(0L, puzzle.recipeId(), puzzle.grid(),
                     puzzle.resultItemId(), puzzle.resultCount());
             state.put(id, record.withRandom(stored));
@@ -208,25 +215,10 @@ public final class GameManager {
         ServerPlayNetworking.send(player, openPayload(game, 0L, state.record(id).stats().snapshot()));
     }
 
-    /** Random practice must not spoil the daily, so today's answer is excluded. */
-    private static PuzzleRecipe pickRandomPuzzle() {
-        List<PuzzleRecipe> pool = RecipePool.pool();
-        int dailyIndex = DailyPicker.pickIndex(DailyPicker.todayUtc(), pool.size());
-        int index;
-        do {
-            index = RNG.nextInt(pool.size());
-        } while (pool.size() > 1 && index == dailyIndex);
-        return pool.get(index);
-    }
-
     /** True when this (practice) game's answer is today's daily recipe. */
     private static boolean isTodaysDaily(CraftleGame game) {
-        List<PuzzleRecipe> pool = RecipePool.pool();
-        if (pool.isEmpty()) {
-            return false;
-        }
-        PuzzleRecipe daily = pool.get(DailyPicker.pickIndex(DailyPicker.todayUtc(), pool.size()));
-        return Arrays.equals(game.answer(), daily.grid());
+        PuzzleRecipe daily = RecipePool.daily(DailyPicker.todayUtc());
+        return daily != null && Arrays.equals(game.answer(), daily.grid());
     }
 
     // ------------------------------------------------------------------ guessing
@@ -455,7 +447,7 @@ public final class GameManager {
     }
 
     private static boolean requirePool(ServerPlayer player) {
-        if (!RecipePool.pool().isEmpty()) {
+        if (!RecipePool.isEmpty()) {
             return true;
         }
         player.sendSystemMessage(Component.literal(

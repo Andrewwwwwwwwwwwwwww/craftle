@@ -9,6 +9,7 @@ import static io.github.andrewwwwwwwwwwwwwww.craftle.game.CellState.PRESENT;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -104,6 +105,40 @@ class GuessEvaluatorTest {
         assertNull(g.submit(new int[]{99, E, E, E, E, E, E, E, E}), "out-of-palette index rejected");
         assertNull(g.submit(new int[]{1, 2}), "wrong-size grid rejected");
         assertEquals(0, g.guessCount());
+    }
+
+    @Test
+    void everyPuzzleIsDealtOncePerCycle() {
+        int pool = 127;
+        for (long cycle = 0; cycle < 8; cycle++) {
+            boolean[] seen = new boolean[pool];
+            for (int i = 0; i < pool; i++) {
+                int index = DailyPicker.pickIndex(cycle * pool + i, pool);
+                assertFalse(seen[index], "puzzle " + index + " dealt twice in one cycle");
+                seen[index] = true;
+            }
+        }
+    }
+
+    @Test
+    void cyclesRunInDifferentOrders() {
+        int pool = 127;
+        int[] first = new int[pool];
+        int[] second = new int[pool];
+        for (int i = 0; i < pool; i++) {
+            first[i] = DailyPicker.pickIndex(i, pool);
+            second[i] = DailyPicker.pickIndex((long) pool + i, pool);
+        }
+        assertFalse(java.util.Arrays.equals(first, second), "two cycles dealt in the same order");
+    }
+
+    @Test
+    void neverRepeatsOnConsecutiveDays() {
+        int pool = 127;
+        for (long day = -400; day < 1200; day++) {
+            assertNotEquals(DailyPicker.pickIndex(day, pool), DailyPicker.pickIndex(day + 1, pool),
+                    "same puzzle on days " + day + " and " + (day + 1));
+        }
     }
 
     @Test

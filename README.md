@@ -32,11 +32,14 @@ win in chat; burn all ten guesses and it announces that too.
 - **Server-authoritative.** The server holds the secret recipe and only ever sends your
   per-cell feedback — the answer never reaches the client until the game is over, so
   it can't be sniffed.
-- **Recipe pool.** Puzzles are discovered from the server's own recipe registry: every
-  shaped crafting recipe whose ingredients all come from the palette is eligible.
-  Recipes smaller than 3×3 are anchored to the top-left of the grid. (Datapacks and
-  mods that add qualifying shaped recipes will feed the pool — on such servers the
-  daily may differ from vanilla servers.)
+- **Recipe pool.** 127 vanilla shaped recipes — every one that can be built entirely
+  from the ingredient palette. The list is fixed in the mod rather than read from
+  whatever recipes a server has loaded, so a datapack or mod cannot shift the pool and
+  hand that server a different daily. Recipes smaller than 3×3 are anchored to the
+  top-left of the grid.
+- **Dealt, not drawn.** The pool is shuffled and handed out one per day until it is
+  exhausted, then reshuffled for the next pass. Every puzzle appears exactly once per
+  127-day cycle, never two days running, and each cycle deals in its own order.
 - **Stats.** Daily games track played/won, current streak, and best streak, shown on
   the board when you finish. Practice games don't touch your stats — and the practice
   picker never deals today's daily answer, so it can't spoil it (a practice puzzle that

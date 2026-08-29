@@ -2,50 +2,84 @@ package io.github.andrewwwwwwwwwwwwwww.craftle.server;
 
 import io.github.andrewwwwwwwwwwwwwww.craftle.ItemIds;
 import io.github.andrewwwwwwwwwwwwwww.craftle.Craftle;
+import io.github.andrewwwwwwwwwwwwwww.craftle.game.DailyPicker;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.GuessEvaluator;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.Palette;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.PuzzleRecipe;
+import io.github.andrewwwwwwwwwwwwwww.craftle.game.VanillaRecipes;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.Ingredient;
+import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.ShapedRecipe;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.Set;
 
 /**
- * Scans the server's recipe registry for shaped crafting recipes whose every ingredient
- * accepts a palette item, and canonicalizes them into {@link PuzzleRecipe}s (palette
- * indices, anchored top-left). Rebuilt on server start and datapack reload.
+ * Resolves the fixed {@link VanillaRecipes} list against the running server, turning each
+ * recipe into a {@link PuzzleRecipe} of palette indices anchored to the grid's top-left.
  *
- * <p>The pool is sorted by recipe id, so vanilla servers on the same game version derive
- * an identical pool — which is what makes the daily puzzle globally shared.</p>
+ * <p>Selection is indexed by position in that fixed list, never by what the server happens
+ * to have loaded, so every server picks the same puzzle for a given day. A server that has
+ * removed or altered one of these recipes simply falls through to the next entry, and only
+ * differs on the days that recipe would have come up.</p>
  */
 public final class RecipePool {
     private RecipePool() {
     }
 
-    private static List<PuzzleRecipe> pool = List.of();
+    /** Aligned 1:1 with {@link VanillaRecipes#IDS}; null where this server can't offer it. */
+    private static PuzzleRecipe[] canonical = new PuzzleRecipe[0];
+    private static List<PuzzleRecipe> available = List.of();
 
-    public static List<PuzzleRecipe> pool() {
-        return pool;
+    public static boolean isEmpty() {
+        return available.isEmpty();
     }
 
-    public static PuzzleRecipe byId(String recipeId) {
-        for (PuzzleRecipe recipe : pool) {
-            if (recipe.recipeId().equals(recipeId)) {
-                return recipe;
+    public static int size() {
+        return available.size();
+    }
+
+    /** Today's puzzle: the same one on every server that still has the recipe. */
+    public static PuzzleRecipe daily(long epochDay) {
+        if (canonical.length == 0) {
+            return null;
+        }
+        int start = DailyPicker.pickIndex(epochDay, canonical.length);
+        for (int i = 0; i < canonical.length; i++) {
+            PuzzleRecipe puzzle = canonical[(start + i) % canonical.length];
+            if (puzzle != null) {
+                return puzzle;
             }
         }
         return null;
+    }
+
+    /** A practice puzzle, never today's daily. */
+    public static PuzzleRecipe practice(Random rng, long today) {
+        if (available.isEmpty()) {
+            return null;
+        }
+        PuzzleRecipe todays = daily(today);
+        for (int attempt = 0; attempt < 32; attempt++) {
+            PuzzleRecipe pick = available.get(rng.nextInt(available.size()));
+            if (todays == null || !pick.recipeId().equals(todays.recipeId())) {
+                return pick;
+            }
+        }
+        return available.get(rng.nextInt(available.size()));
     }
 
     public static void rebuild(MinecraftServer server) {
@@ -53,28 +87,47 @@ public final class RecipePool {
         for (String id : Palette.ITEM_IDS) {
             if (!ItemIds.exists(id)) {
                 Craftle.LOGGER.warn("[Craftle] palette item {} does not exist in this game version", id);
-                pool = List.of();
+                canonical = new PuzzleRecipe[0];
+                available = List.of();
                 return;
             }
             palette.add(ItemIds.resolve(id));
         }
 
-        List<RecipeHolder<?>> holders = new ArrayList<>(server.getRecipeManager().getRecipes());
-        holders.sort(Comparator.comparing(holder -> holder.id().identifier().toString()));
-
-        List<PuzzleRecipe> out = new ArrayList<>();
+        PuzzleRecipe[] resolved = new PuzzleRecipe[VanillaRecipes.IDS.size()];
+        List<PuzzleRecipe> live = new ArrayList<>();
         Set<String> seenGrids = new HashSet<>();
-        for (RecipeHolder<?> holder : holders) {
-            PuzzleRecipe puzzle = canonicalize(holder, palette);
-            if (puzzle != null && seenGrids.add(puzzle.gridKey())) {
-                out.add(puzzle);
+        int missing = 0;
+        for (int i = 0; i < VanillaRecipes.IDS.size(); i++) {
+            String id = VanillaRecipes.IDS.get(i);
+            PuzzleRecipe puzzle = lookUp(server, id, palette);
+            if (puzzle == null) {
+                missing++;
+            } else if (seenGrids.add(puzzle.gridKey())) {
+                resolved[i] = puzzle;
+                live.add(puzzle);
             }
         }
-        pool = List.copyOf(out);
-        Craftle.LOGGER.info("[Craftle] recipe pool ready: {} puzzles", pool.size());
+        canonical = resolved;
+        available = List.copyOf(live);
+        if (missing > 0) {
+            Craftle.LOGGER.info("[Craftle] {} of {} puzzles unavailable here (recipes changed or removed) —"
+                    + " those days will differ from a vanilla server", missing, VanillaRecipes.IDS.size());
+        }
+        Craftle.LOGGER.info("[Craftle] recipe pool ready: {} puzzles", available.size());
     }
 
-    private static PuzzleRecipe canonicalize(RecipeHolder<?> holder, List<Item> palette) {
+    private static PuzzleRecipe lookUp(MinecraftServer server, String id, List<Item> palette) {
+        Identifier parsed = Identifier.tryParse(id);
+        if (parsed == null) {
+            return null;
+        }
+        Optional<RecipeHolder<?>> holder =
+                server.getRecipeManager().byKey(ResourceKey.create(Registries.RECIPE, parsed));
+        return holder.map(h -> canonicalize(h, id, palette)).orElse(null);
+    }
+
+    private static PuzzleRecipe canonicalize(RecipeHolder<? extends Recipe<?>> holder, String id, List<Item> palette) {
         if (!(holder.value() instanceof ShapedRecipe shaped)) {
             return null;
         }
@@ -108,7 +161,7 @@ public final class RecipePool {
             filled++;
         }
         if (filled < 2) {
-            return null; // single-ingredient grids are not puzzles
+            return null;
         }
 
         ItemStack result;
@@ -120,8 +173,7 @@ public final class RecipePool {
         if (result == null || result.isEmpty()) {
             return null;
         }
-        return new PuzzleRecipe(holder.id().identifier().toString(), grid,
-                ItemIds.idOf(result.getItem()), result.getCount());
+        return new PuzzleRecipe(id, grid, ItemIds.idOf(result.getItem()), result.getCount());
     }
 
     private static int firstMatch(Ingredient ingredient, List<Item> palette) {
