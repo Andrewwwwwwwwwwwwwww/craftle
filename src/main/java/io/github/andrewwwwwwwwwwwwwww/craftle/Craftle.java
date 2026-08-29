@@ -10,7 +10,9 @@ import io.github.andrewwwwwwwwwwwwwww.craftle.server.RecipePool;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.commands.Commands;
 import net.minecraft.server.MinecraftServer;
@@ -63,6 +65,13 @@ public class Craftle implements ModInitializer {
                                             GameManager.openRandom(player, true);
                                             return 1;
                                         })))));
+
+        // Tell each player once, shortly after they log in, that a fresh puzzle is up.
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+                GameManager.onJoin(handler.player));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) ->
+                GameManager.onLeave(handler.player));
+        ServerTickEvents.END_SERVER_TICK.register(GameManager::tick);
 
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
             GameManager.clear();

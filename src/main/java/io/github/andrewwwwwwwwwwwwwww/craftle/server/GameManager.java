@@ -19,7 +19,9 @@ import io.github.andrewwwwwwwwwwwwwww.craftle.net.PreviewResultPayload;
 import io.github.andrewwwwwwwwwwwwwww.craftle.net.StatsSnapshot;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.HoverEvent;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -48,7 +50,15 @@ public final class GameManager {
     private GameManager() {
     }
 
+    /**
+     * A join sits in here for a moment before the nudge is sent: the client's channel
+     * list arrives just after login, so asking straight away would wrongly conclude that a
+     * modded client can't play — and it reads better after the world has finished loading.
+     */
+    private static final int NOTICE_DELAY_TICKS = 60;
+
     private static final Random RNG = new Random();
+    private static final Map<UUID, Integer> pendingNotices = new HashMap<>();
     private static final Map<UUID, CraftleGame> liveDaily = new HashMap<>();
     private static final Map<UUID, CraftleGame> liveRandom = new HashMap<>();
 
@@ -56,6 +66,79 @@ public final class GameManager {
     public static void clear() {
         liveDaily.clear();
         liveRandom.clear();
+        pendingNotices.clear();
+    }
+
+    // ------------------------------------------------------------------ daily nudge
+
+    public static void onJoin(ServerPlayer player) {
+        pendingNotices.put(player.getUUID(), NOTICE_DELAY_TICKS);
+    }
+
+    public static void onLeave(ServerPlayer player) {
+        UUID id = player.getUUID();
+        pendingNotices.remove(id);
+        // Their games are reloaded from the save on reconnect, so don't hold them here.
+        liveDaily.remove(id);
+        liveRandom.remove(id);
+    }
+
+    /** Counts down queued joins and tells each player once that today's puzzle is waiting. */
+    public static void tick(MinecraftServer server) {
+        if (pendingNotices.isEmpty()) {
+            return;
+        }
+        List<UUID> due = null;
+        for (Map.Entry<UUID, Integer> entry : pendingNotices.entrySet()) {
+            int ticksLeft = entry.getValue() - 1;
+            entry.setValue(ticksLeft);
+            if (ticksLeft <= 0) {
+                if (due == null) {
+                    due = new ArrayList<>();
+                }
+                due.add(entry.getKey());
+            }
+        }
+        if (due == null) {
+            return;
+        }
+        for (UUID id : due) {
+            pendingNotices.remove(id);
+            ServerPlayer player = server.getPlayerList().getPlayer(id);
+            if (player != null) {
+                notifyNewDaily(player, server);
+            }
+        }
+    }
+
+    private static void notifyNewDaily(ServerPlayer player, MinecraftServer server) {
+        if (RecipePool.pool().isEmpty()
+                || !ServerPlayNetworking.canSend(player, OpenGamePayload.TYPE)) {
+            return; // nothing to play, or this client can't open the board anyway
+        }
+        long today = DailyPicker.todayUtc();
+        CraftleState state = CraftleState.get(server);
+        UUID id = player.getUUID();
+        PlayerRecord record = state.record(id);
+        if (record.lastNotifiedDay() == today) {
+            return; // already told them about this one
+        }
+        state.put(id, record.withNotifiedDay(today));
+        if (!record.dailyUnstarted(today)) {
+            return; // they're already on it
+        }
+
+        MutableComponent command = Component.literal("/craftle")
+                .withStyle(style -> style
+                        .withColor(ChatFormatting.AQUA)
+                        .withUnderlined(true)
+                        .withClickEvent(new ClickEvent.RunCommand("craftle"))
+                        .withHoverEvent(new HoverEvent.ShowText(
+                                Component.literal("Play today's Craftle"))));
+        player.sendSystemMessage(Component.literal("A new Craftle is ready — ")
+                .withStyle(ChatFormatting.GOLD)
+                .append(command)
+                .append(Component.literal(" to play.").withStyle(ChatFormatting.GOLD)));
     }
 
     // ------------------------------------------------------------------ opening
