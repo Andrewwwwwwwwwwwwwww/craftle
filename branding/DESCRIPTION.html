@@ -1,0 +1,79 @@
+<h2>Craftle</h2>
+
+<p>Wordle type crafting puzzle</p>
+
+<p>Every day there is one secret crafting recipe, and it's the <strong>same recipe for everyone</strong>. You get <strong>ten guesses</strong> to work out what it is: place ingredients into the 3x3 grid, press <strong>Craft</strong>, and every cell you filled comes back colour-coded.</p>
+
+<h2>Screenshots</h2>
+
+<!-- Upload each image on the project's Images tab (or paste it into the editor, which
+     uploads it for you), then point these at the media.forgecdn.net links it returns. -->
+<p><img src="CF_IMAGE_URL_1" alt="The Craftle board"></p>
+<p><em>Ten guesses to work out the hidden recipe. The output slot shows what your grid would craft.</em></p>
+
+<p><img src="CF_IMAGE_URL_2" alt="A solved daily"></p>
+<p><em>Every attempt stays on screen, and the ingredients carry what you have learned: green once placed correctly, orange for in the recipe somewhere, grey for ruled out.</em></p>
+
+<h2>How to play</h2>
+
+<p>Run <code>/craftle</code>. Pick an ingredient from the palette, click the grid to place it, right-click a cell to clear it, then press <strong>Craft</strong> to submit a guess.</p>
+
+<p>Each cell of your guess comes back as one of three colours:</p>
+
+<table>
+  <thead>
+    <tr><th>Colour</th><th>Meaning</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Green</strong></td><td>Right ingredient, and it's in the right cell</td></tr>
+    <tr><td><strong>Orange</strong></td><td>That ingredient is in the recipe, but it belongs somewhere else</td></tr>
+    <tr><td><strong>Grey</strong></td><td>That ingredient isn't in the recipe at all</td></tr>
+  </tbody>
+</table>
+
+<p>Empty cells give nothing away, and recipes smaller than 3x3 are always anchored to the <strong>top-left</strong> of the grid.</p>
+
+<p>Every attempt you make stays on screen as a colour-coded mini grid down the sides of the board, so you can cross-reference all ten guesses. Your last attempt also stays on the crafting grid itself, so your next guess can be a one-cell tweak rather than a rebuild.</p>
+
+<h2>Commands</h2>
+
+<table>
+  <thead>
+    <tr><th>Command</th><th>What it does</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>/craftle</code></td><td>Today's daily puzzle</td></tr>
+    <tr><td><code>/craftle random</code></td><td>Practice mode, unlimited puzzles</td></tr>
+    <tr><td><code>/craftle random new</code></td><td>Abandon the current practice puzzle, deal a fresh one</td></tr>
+  </tbody>
+</table>
+
+<h2>Features</h2>
+
+<ul>
+  <li><strong>A global daily.</strong> The puzzle is derived from the calendar day, so every server running the same Minecraft version has the same daily. It resets at midnight UTC.</li>
+  <li><strong>Chat announcements.</strong> Solve it and the server announces it &mdash; <code>Player solved today's Craftle in 4/10!</code> Burn all ten guesses and it announces that too, without giving the answer away to anyone still playing.</li>
+  <li><strong>Streaks and stats.</strong> Games played, games won, current streak and best streak, shown on the board when you finish.</li>
+  <li><strong>Practice mode</strong> that never deals you today's daily, so it can't spoil it.</li>
+  <li><strong>High contrast mode</strong> for colourblind players, in the help page &mdash; swaps green/orange for a blue/orange pair.</li>
+  <li><strong>Nothing to cheat with.</strong> The server holds the answer and grades your guesses; the answer is never sent to your client until the game is over.</li>
+  <li><strong>The same puzzle everywhere.</strong> The pool is 127 vanilla recipes baked into the mod, not read from whatever a server happens to have loaded, so datapacks and other mods can't hand your server a different daily from everyone else's.</li>
+  <li><strong>Dealt like a deck.</strong> Every puzzle comes up exactly once per 127-day cycle, never two days running, and the order is reshuffled for each new pass.</li>
+  <li><strong>Saves your progress.</strong> Log out mid-puzzle and pick up exactly where you left off.</li>
+</ul>
+
+<h2>Installation</h2>
+
+<p>Craftle must be installed on <strong>both the client and the server</strong>, along with <a href="https://www.curseforge.com/minecraft/mc-mods/fabric-api">Fabric API</a>.</p>
+
+<ol>
+  <li>Install the <a href="https://fabricmc.net/use/">Fabric loader</a> for Minecraft 26.2</li>
+  <li>Drop the Craftle jar and the Fabric API jar into your <code>mods</code> folder</li>
+  <li>In singleplayer it just works. On a server, install it on both sides.</li>
+</ol>
+
+<p>Players without the mod installed simply can't open the board &mdash; the command tells them what's missing, and nothing else breaks for them.</p>
+
+<h2>Credits</h2>
+
+<p>Craftle is an independent fan recreation, built for in-game play, of the browser game <strong><a href="https://minecraftle.zachmanson.com">Minecraftle</a></strong> by Tamura Boog, Zach Manson, Harrison Oates and Ivan Sossa Gongora. All credit for the game's concept and rules goes to them.</p>

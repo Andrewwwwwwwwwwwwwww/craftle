@@ -1,0 +1,14 @@
+<h3>Added</h3>
+<ul>
+  <li><strong>The ingredient palette now carries what you've learned.</strong> Each ingredient takes the best colour it has ever earned across your guesses &mdash; green once it has landed in the right cell, orange while it's known to be in the recipe somewhere, grey once it has been ruled out &mdash; so you can see at a glance what's confirmed and what's eliminated without re-reading every past guess. The best result always wins, so placing a duplicate one time too many can't downgrade an ingredient you've already confirmed.</li>
+  <li><strong>A nudge on your first login</strong> after the daily rolls over, with a clickable <code>/craftle</code>. It fires once per player per day and only if you haven't already started that day's puzzle, so it never nags.</li>
+</ul>
+
+<h3>Changed</h3>
+<ul>
+  <li><strong>The puzzle pool is now a fixed list of 127 vanilla recipes</strong>, baked into the mod instead of read from whatever recipes a server happens to have loaded. Previously a datapack or another mod that added a qualifying shaped recipe shifted the whole pool, so that server's daily silently diverged from everyone else's. Servers are still asked for each recipe's real layout, so the answer matches what actually crafts there.</li>
+  <li><strong>Puzzles are dealt like a deck rather than drawn each day.</strong> The pool is shuffled and handed out one per day until exhausted, then reshuffled. Every puzzle now appears exactly once per 127-day cycle, never on consecutive days, and no two cycles run in the same order. The old per-day draw repeated far sooner than it looked &mdash; with 127 puzzles a repeat was likely within a fortnight, while other recipes went months unseen.</li>
+</ul>
+
+<h3>Note for existing players</h3>
+<p>Those last two changes <strong>alter which recipe comes up on a given day</strong>. Everyone needs to be on the same version to be playing the same daily, so update server and clients together. Puzzles already in progress are unaffected &mdash; the answer is stored with the game, not looked up again.</p>
