@@ -554,11 +554,15 @@ public class CraftleScreen extends Screen {
     }
 
     private void drawPalette(GuiGraphicsExtractor g, int mouseX, int mouseY) {
+        CellState[] known = paletteStates();
         for (int i = 0; i < palette.size(); i++) {
             int x = palX + (i % 6) * CELL + 1;
             int y = palY + (i / 6) * CELL + 1;
             if (i == selected) {
                 Chrome.selection(g, x, y, COLOR_SELECTION);
+            }
+            if (known[i] != null) {
+                g.fill(x, y, x + 16, y + 16, overlayColor(known[i]));
             }
             g.item(palette.get(i), x, y);
         }
@@ -569,6 +573,43 @@ public class CraftleScreen extends Screen {
             g.fill(x, y, x + 16, y + 16, 0x66FFFFFF);
             g.setTooltipForNextFrame(this.font, palette.get(hovered), mouseX, mouseY);
         }
+    }
+
+    /**
+     * What every guess so far has established about each ingredient, so the palette carries
+     * the same colours as the board: green once it has landed in the right cell, orange while
+     * it is known to be in the recipe somewhere, grey once it has been ruled out. The best
+     * result an ingredient has ever earned wins, so a duplicate placed one time too many
+     * can't downgrade it.
+     */
+    private CellState[] paletteStates() {
+        CellState[] best = new CellState[palette.size()];
+        for (int n = 0; n < guesses.size(); n++) {
+            int[] guess = guesses.get(n);
+            CellState[] colors = results.get(n);
+            for (int i = 0; i < GuessEvaluator.GRID_SIZE; i++) {
+                int item = guess[i];
+                if (item < 0 || item >= best.length) {
+                    continue;
+                }
+                switch (colors[i]) {
+                    case CORRECT -> best[item] = CellState.CORRECT;
+                    case PRESENT -> {
+                        if (best[item] != CellState.CORRECT) {
+                            best[item] = CellState.PRESENT;
+                        }
+                    }
+                    case ABSENT -> {
+                        if (best[item] == null) {
+                            best[item] = CellState.ABSENT;
+                        }
+                    }
+                    default -> {
+                    }
+                }
+            }
+        }
+        return best;
     }
 
     /**
@@ -676,6 +717,7 @@ public class CraftleScreen extends Screen {
                 "Pick an ingredient, then click the grid",
                 "to place it. Right-click clears a cell.",
                 "The output slot shows what you'd craft.",
+                "Ingredients below take the same colours.",
         };
         for (String line : lines) {
             text(g, line, x, y, 0xFFDDDDDD);

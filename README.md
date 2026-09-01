@@ -44,6 +44,9 @@ win in chat; burn all ten guesses and it announces that too.
   the board when you finish. Practice games don't touch your stats — and the practice
   picker never deals today's daily answer, so it can't spoil it (a practice puzzle that
   *becomes* the daily overnight is swapped out automatically).
+- **Ingredient tracking.** The palette carries the same colours as the board: an
+  ingredient turns green once it has landed in the right cell, orange while it is known
+  to be in the recipe somewhere, and grey once it has been ruled out.
 - **Persistence.** Games and stats live in the world save; you can log out mid-puzzle
   and pick up where you left off.
 
