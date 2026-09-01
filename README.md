@@ -32,9 +32,10 @@ win in chat; burn all ten guesses and it announces that too.
 
 ## How it works
 
-- **Global daily.** The daily puzzle is picked deterministically from the UTC calendar
-  day, so every server running the same game version shares the same puzzle. It resets
-  at midnight UTC.
+- **Global daily.** The daily puzzle is picked deterministically from the calendar day in
+  US Eastern, so every server running the same game version shares the same puzzle, and it
+  turns over at the same moment everywhere: midnight US Eastern (the zone follows daylight
+  saving, so the reset stays at local midnight in New York year-round).
 - **Server-authoritative.** The server holds the secret recipe and only ever sends your
   per-cell feedback — the answer never reaches the client until the game is over, so
   it can't be sniffed.

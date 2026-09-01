@@ -1,5 +1,20 @@
 # Craftle Changelog
 
+## [1.1.0] - 2026-08-31
+
+### Changed
+- **The daily now turns over at midnight US Eastern** rather than midnight UTC. It is still
+  a single global moment — everyone's puzzle changes at the same instant, wherever their
+  server is — just an hour that suits North American evenings instead of rolling over
+  mid-evening. The zone follows daylight saving, so the reset stays at local midnight in
+  New York year-round rather than drifting an hour twice a year.
+
+### Note for existing players
+Between midnight UTC and midnight Eastern, a client and server on different versions would
+disagree about which day it is, so update them together. If you are mid-puzzle across the
+switch, that game may be replaced by the new day's puzzle — finished games, stats and
+streaks are untouched.
+
 ## [1.0.1] - 2026-08-31
 
 ### Added
@@ -37,7 +52,7 @@ First release. A daily crafting-recipe guessing game played on a real 3x3 grid.
 
 ### The game
 - **A global daily puzzle.** One secret shaped recipe per day, the same one for everyone.
-  It resets at midnight UTC.
+  It resets at midnight US Eastern.
 - **Ten guesses**, graded per cell: green for the right ingredient in the right cell,
   orange for an ingredient that's in the recipe but belongs elsewhere, grey for one that
   isn't in the recipe. Duplicates are handled Wordle-style — an ingredient only earns

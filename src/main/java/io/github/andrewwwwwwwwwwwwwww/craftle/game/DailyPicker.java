@@ -1,12 +1,18 @@
 package io.github.andrewwwwwwwwwwwwwww.craftle.game;
 
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Random;
 
 /**
  * Deterministic global daily-puzzle selection. Every server running the same game version
- * derives the same puzzle for a given UTC day.
+ * derives the same puzzle for a given day.
+ *
+ * <p>The day rolls over at midnight US Eastern, not at the server's own local midnight, so
+ * a puzzle changes at the same instant everywhere. The zone (rather than a fixed offset)
+ * is deliberate: it follows daylight saving, so the reset stays at local midnight in New
+ * York year-round.</p>
  *
  * <p>Puzzles are dealt like a shuffled deck rather than drawn at random each day: the pool
  * is shuffled, handed out one per day until it is exhausted, then reshuffled into a new
@@ -19,15 +25,26 @@ public final class DailyPicker {
     private static final long SALT = 0x4D43_4C45_2026L; // "MCLE" 2026
     private static final long MIX = 0x9E3779B97F4A7C15L;
 
+    private static final ZoneId ZONE = resolveZone();
+
     private DailyPicker() {
     }
 
-    /** Days since 1970-01-01 in UTC — the identity of "today's puzzle" everywhere. */
-    public static long todayUtc() {
-        return LocalDate.now(ZoneOffset.UTC).toEpochDay();
+    private static ZoneId resolveZone() {
+        try {
+            return ZoneId.of("America/New_York");
+        } catch (Exception e) {
+            // A JVM without tz data would otherwise take the mod down on class load.
+            return ZoneOffset.ofHours(-5);
+        }
     }
 
-    /** Index into a pool of {@code poolSize} puzzles for the given UTC day. */
+    /** The current puzzle day — the date in US Eastern, as days since 1970-01-01. */
+    public static long today() {
+        return LocalDate.now(ZONE).toEpochDay();
+    }
+
+    /** Index into a pool of {@code poolSize} puzzles for the given puzzle day. */
     public static int pickIndex(long epochDay, int poolSize) {
         if (poolSize <= 0) {
             throw new IllegalArgumentException("empty recipe pool");

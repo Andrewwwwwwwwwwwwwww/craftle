@@ -731,8 +731,8 @@ public class CraftleScreen extends Screen {
         String[] tail = {
                 "Empty cells give no hints, and recipes",
                 "anchor to the top-left of the grid.",
-                "The daily resets at midnight UTC and is",
-                "the same puzzle for everyone.",
+                "The daily resets at midnight US",
+                "Eastern, and is the same for everyone.",
         };
         for (String line : tail) {
             text(g, line, x, y, 0xFFDDDDDD);

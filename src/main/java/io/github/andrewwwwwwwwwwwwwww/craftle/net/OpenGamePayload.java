@@ -22,7 +22,7 @@ import java.util.List;
  * @param answer       the secret grid — empty array unless finished
  * @param resultItemId crafted item id — "" unless finished
  * @param resultCount  crafted item count (display only)
- * @param epochDay     UTC epoch day of the daily puzzle (0 for random mode)
+ * @param epochDay     puzzle day (US Eastern date, as an epoch day) (0 for random mode)
  * @param stats        daily career stats for the results panel
  */
 public record OpenGamePayload(byte mode, List<String> paletteIds, List<byte[]> guesses,

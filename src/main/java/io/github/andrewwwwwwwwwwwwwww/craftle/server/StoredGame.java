@@ -15,7 +15,7 @@ import java.util.List;
  * always be rehydrated — even if the recipe pool changes under it (datapacks, mod
  * updates) mid-game or after the fact.
  *
- * @param day      UTC epoch day the daily belongs to (0 for random games)
+ * @param day      puzzle day the daily belongs to (0 for random games)
  * @param recipeId source recipe id (informational)
  * @param answer   9 palette indices, -1 = empty
  * @param guesses  each guess as 9 palette indices

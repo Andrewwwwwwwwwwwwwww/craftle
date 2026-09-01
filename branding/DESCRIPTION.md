@@ -55,7 +55,7 @@ Every attempt you make stays on screen as a colour-coded mini grid down the side
 
 ## Features
 
-- **A global daily.** The puzzle is derived from the calendar day, so every server running the same Minecraft version has the same daily. It resets at midnight UTC.
+- **A global daily.** The puzzle is derived from the calendar day, so every server running the same Minecraft version has the same daily. It resets at midnight US Eastern.
 - **Chat announcements.** Solve it and the server announces it — `Player solved today's Craftle in 4/10!` Burn all ten guesses and it announces that too, without giving the answer away to anyone still playing.
 - **Streaks and stats.** Games played, games won, current streak and best streak, shown on the board when you finish.
 - **Practice mode** that never deals you today's daily, so it can't spoil it.

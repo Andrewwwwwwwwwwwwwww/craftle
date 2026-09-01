@@ -116,7 +116,7 @@ public final class GameManager {
                 || !ServerPlayNetworking.canSend(player, OpenGamePayload.TYPE)) {
             return; // nothing to play, or this client can't open the board anyway
         }
-        long today = DailyPicker.todayUtc();
+        long today = DailyPicker.today();
         CraftleState state = CraftleState.get(server);
         UUID id = player.getUUID();
         PlayerRecord record = state.record(id);
@@ -150,7 +150,7 @@ public final class GameManager {
         MinecraftServer server = player.level().getServer();
         CraftleState state = CraftleState.get(server);
         UUID id = player.getUUID();
-        long today = DailyPicker.todayUtc();
+        long today = DailyPicker.today();
 
         PlayerRecord record = state.record(id);
         StoredGame stored = record.daily().orElse(null);
@@ -194,7 +194,7 @@ public final class GameManager {
         StoredGame stored = record.random().orElse(null);
         CraftleGame game = (stored == null || forceNew) ? null : stored.rehydrate(GameMode.RANDOM);
         if (game != null && !game.status().finished() && isTodaysDaily(game)) {
-            // A practice game carried across midnight UTC can BE today's daily — replace
+            // A practice game carried across midnight Eastern can BE today's daily — replace
             // it rather than let it spoil the answer.
             player.sendSystemMessage(Component.literal(
                     "Your practice puzzle became today's daily — dealing a new one.")
@@ -202,7 +202,7 @@ public final class GameManager {
             game = null;
         }
         if (game == null || game.status().finished()) {
-            PuzzleRecipe puzzle = RecipePool.practice(RNG, DailyPicker.todayUtc());
+            PuzzleRecipe puzzle = RecipePool.practice(RNG, DailyPicker.today());
             if (puzzle == null) {
                 return;
             }
@@ -217,7 +217,7 @@ public final class GameManager {
 
     /** True when this (practice) game's answer is today's daily recipe. */
     private static boolean isTodaysDaily(CraftleGame game) {
-        PuzzleRecipe daily = RecipePool.daily(DailyPicker.todayUtc());
+        PuzzleRecipe daily = RecipePool.daily(DailyPicker.today());
         return daily != null && Arrays.equals(game.answer(), daily.grid());
     }
 
@@ -248,7 +248,7 @@ public final class GameManager {
 
     private static void handleDailyGuess(ServerPlayer player, MinecraftServer server, CraftleState state,
                                          UUID id, PlayerRecord record, byte[] cells) {
-        long today = DailyPicker.todayUtc();
+        long today = DailyPicker.today();
         StoredGame stored = record.daily().orElse(null);
         if (stored == null || stored.day() != today) {
             liveDaily.remove(id);
@@ -295,7 +295,7 @@ public final class GameManager {
             return;
         }
         if (!game.status().finished() && isTodaysDaily(game)) {
-            // Crossed midnight UTC mid-game and the practice puzzle is now the daily.
+            // Crossed midnight Eastern mid-game and the practice puzzle is now the daily.
             liveRandom.remove(id);
             state.put(id, record.withRandom(null));
             reject(player, GameMode.RANDOM.id(),
