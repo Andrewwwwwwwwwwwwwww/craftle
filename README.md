@@ -16,6 +16,12 @@ Your previous guesses stay on screen as mini grids flanking the board — up to 
 them — so you can cross-reference while you work. Solve it and the server announces your
 win in chat; burn all ten guesses and it announces that too.
 
+## Screenshots
+
+![The Craftle board](branding/screenshots/01-board.png)
+
+![A solved daily](branding/screenshots/02-solved.png)
+
 ## Commands
 
 | Command | What it does |

@@ -14,6 +14,21 @@ Wordle type crafting puzzle
 
 Every day there is one secret crafting recipe, and it's the **same recipe for everyone**. You get **ten guesses** to work out what it is: place ingredients into the 3x3 grid, press **Craft**, and every cell you filled comes back colour-coded.
 
+## Screenshots
+
+<!-- Upload each image on the project's Images tab (or paste it into the editor, which
+     uploads it for you), then replace these two URLs with the media.forgecdn.net links
+     CurseForge gives back. -->
+
+![The Craftle board](CF_IMAGE_URL_1)
+
+*Ten guesses to work out the hidden recipe. The output slot shows what your grid would craft.*
+
+![A solved daily](CF_IMAGE_URL_2)
+
+*Every attempt stays on screen, and the ingredients carry what you have learned: green once
+placed correctly, orange for in the recipe somewhere, grey for ruled out.*
+
 ## How to play
 
 Run `/craftle`. Pick an ingredient from the palette, click the grid to place it, right-click a cell to clear it, then press **Craft** to submit a guess.
