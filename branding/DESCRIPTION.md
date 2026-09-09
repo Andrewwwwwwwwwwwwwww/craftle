@@ -24,7 +24,7 @@ Every day there is one secret crafting recipe, and it's the **same recipe for ev
 
 - 🟩 **Green** is the right ingredient in the right cell
 - 🟧 **Orange** means that ingredient is in the recipe, but belongs somewhere else
-- ⬜ **Grey** means that ingredient isn't in the recipe at all
+- ⬜ **Grey** means that ingredient isn't in the recipe at all (or every copy of it is already placed)
 
 Empty cells give nothing away, and recipes smaller than 3x3 are always anchored to the **top-left** of the grid.
 

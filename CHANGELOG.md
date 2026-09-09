@@ -48,7 +48,9 @@ looked up again.
 
 ## [1.0.0] - 2026-08-28
 
-First release. A daily crafting-recipe guessing game played on a real 3x3 grid.
+First release. A daily crafting-recipe guessing game played on a real 3x3 grid. (The 1.0.0
+jar attached to the GitHub release was rebuilt after 1.0.1 and includes that version's
+changes; the list below is the first release as it was tested.)
 
 ### The game
 - **A global daily puzzle.** One secret shaped recipe per day, the same one for everyone.
@@ -60,22 +62,15 @@ First release. A daily crafting-recipe guessing game played on a real 3x3 grid.
   wants one tells you exactly that.
 - **Empty cells give nothing away**, and recipes smaller than 3x3 are anchored to the
   top-left of the grid.
-- **127 puzzles**, every vanilla shaped recipe that can be built entirely from the
-  18-ingredient palette. The list is fixed in the mod rather than read from whatever
-  recipes a server has loaded, so a datapack or another mod can't shift the pool and hand
-  one server a different daily from everyone else. Each server is still asked for the
-  recipe's real layout, so the answer matches what actually crafts there.
-- **Dealt like a deck, not drawn at random.** The pool is shuffled and handed out one per
-  day until exhausted, then reshuffled. Every puzzle appears exactly once per 127-day
-  cycle, never on consecutive days, and no two cycles run in the same order.
+- **Puzzles from the server's own recipes.** Every shaped recipe the server has loaded
+  that can be built entirely from the 18-ingredient palette, one drawn per day. (The
+  fixed 127-recipe pool and deck dealing arrived in 1.0.1.)
 - **Practice mode** (`/craftle random`) with unlimited puzzles, which never deals today's
   daily — including swapping itself out if an unfinished practice puzzle *becomes* the
   daily overnight.
 - **Chat announcements** when someone solves the daily or burns all ten guesses, without
   revealing the answer to anyone still playing.
 - **Streaks and stats** — played, won, current streak, best streak — shown when you finish.
-- **A nudge on your first login** after the puzzle rolls over, with a clickable `/craftle`.
-  Once per player per day, and only if you haven't already started it.
 
 ### The board
 - A custom screen drawn in vanilla's own style: the crafting grid, a live output slot, the
@@ -86,9 +81,6 @@ First release. A daily crafting-recipe guessing game played on a real 3x3 grid.
 - **Your last attempt stays on the board** as well as going into the history, so the next
   guess is a one-cell tweak rather than a rebuild. Craft is disabled while the grid still
   matches your last guess, so a stray double-click can't spend two turns on it.
-- **The palette carries what you've learned** — each ingredient takes the best colour it
-  has ever earned, so you can see at a glance what's confirmed, what's still in play, and
-  what's ruled out.
 - **A high contrast mode** for colourblind players, in the help page, swapping green and
   orange for a blue/orange pair. Remembered in `config/craftle.json`.
 

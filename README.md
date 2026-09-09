@@ -12,8 +12,8 @@ and press **Craft**. Each cell of your guess is graded Wordle-style:
 - 🟧 **Orange** — the ingredient is in the recipe, but belongs in a different cell
 - ⬜ **Grey** — the ingredient is not in the recipe (or all its copies are accounted for)
 
-Your previous guesses stay on screen as mini grids flanking the board — up to nine of
-them — so you can cross-reference while you work. Solve it and the server announces your
+Every attempt stays on screen as a mini grid flanking the board — all ten, five down
+each side — so you can cross-reference while you work. Solve it and the server announces your
 win in chat; burn all ten guesses and it announces that too.
 
 ## Screenshots
@@ -54,6 +54,12 @@ win in chat; burn all ten guesses and it announces that too.
 - **Ingredient tracking.** The palette carries the same colours as the board: an
   ingredient turns green once it has landed in the right cell, orange while it is known
   to be in the recipe somewhere, and grey once it has been ruled out.
+- **The output slot works like a crafting table.** It shows what your current arrangement
+  would actually craft, and your last attempt stays on the grid so the next guess can be
+  a one-cell tweak. Craft is disabled while the grid still matches your last guess.
+- **Login nudge and high contrast.** A clickable `/craftle` appears once per day on login
+  while today's puzzle is untouched. The `?` help page has a high contrast toggle (blue
+  and orange instead of green and orange), remembered in `config/craftle.json`.
 - **Persistence.** Games and stats live in the world save; you can log out mid-puzzle
   and pick up where you left off.
 

@@ -3,7 +3,7 @@ plugins {
     id 'maven-publish'
 }
 
-// Jar/file name includes the Minecraft version, e.g. minecraftle-1.0.0+mc26.2.jar
+// Jar/file name includes the Minecraft version, e.g. craftle-1.1.0+mc26.2.jar
 version = "${project.mod_version}+mc${project.minecraft_version}"
 group = project.maven_group
 
