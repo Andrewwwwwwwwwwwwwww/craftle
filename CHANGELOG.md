@@ -52,7 +52,7 @@ First release. A daily crafting-recipe guessing game played on a real 3x3 grid.
 
 ### The game
 - **A global daily puzzle.** One secret shaped recipe per day, the same one for everyone.
-  It resets at midnight US Eastern.
+  It resets at midnight UTC (midnight US Eastern since 1.1.0).
 - **Ten guesses**, graded per cell: green for the right ingredient in the right cell,
   orange for an ingredient that's in the recipe but belongs elsewhere, grey for one that
   isn't in the recipe. Duplicates are handled Wordle-style — an ingredient only earns
