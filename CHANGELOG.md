@@ -1,5 +1,12 @@
 # Craftle Changelog
 
+## [1.2.0] - 2026-09-15
+
+### Added
+- **A Minecraft 26.3 build.** Craftle now ships for 26.3 (Fabric Loader 0.19.5, Fabric API
+  0.160.5+26.3) alongside the 26.2 build, which carries on unchanged. Same code, same
+  puzzles, same daily reset on both.
+
 ## [1.1.0] - 2026-08-31
 
 ### Changed
