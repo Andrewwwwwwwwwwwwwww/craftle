@@ -1,6 +1,6 @@
 # Craftle
 
-The daily crafting-recipe guessing game — in the game. A Fabric mod for Minecraft 26.2
+The daily crafting-recipe guessing game — in the game. A Fabric mod for Minecraft 26.3
 that recreates the web game [Minecraftle](https://minecraftle.zachmanson.com) (by Zach
 Manson and friends) as a native in-game screen.
 
@@ -67,8 +67,8 @@ win in chat; burn all ten guesses and it announces that too.
 
 Both **client and server** need the mod (plus [Fabric API](https://www.curseforge.com/minecraft/mc-mods/fabric-api)):
 
-1. Install the [Fabric loader](https://fabricmc.net/use/) for Minecraft 26.2.
-2. Drop `craftle-<version>+mc26.2.jar` and the Fabric API jar into `mods/`.
+1. Install the [Fabric loader](https://fabricmc.net/use/) for Minecraft 26.3.
+2. Drop `craftle-<version>+mc26.3.jar` and the Fabric API jar into `mods/`.
 3. In singleplayer it just works; on a server, install it on both sides.
 
 Players without the mod on their client can't open the board — the command tells them
