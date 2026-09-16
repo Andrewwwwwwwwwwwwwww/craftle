@@ -1,5 +1,6 @@
 package io.github.andrewwwwwwwwwwwwwww.craftle.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.andrewwwwwwwwwwwwwww.craftle.ItemIds;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.CellState;
 import io.github.andrewwwwwwwwwwwwwww.craftle.game.CraftleGame;
@@ -384,7 +385,7 @@ public class CraftleScreen extends Screen {
         int my = (int) event.y();
 
         int paletteIndex = paletteIndexAt(mx, my);
-        if (paletteIndex >= 0 && event.button() == 0 && canEdit()) {
+        if (paletteIndex >= 0 && event.button() == InputConstants.MOUSE_BUTTON_LEFT && canEdit()) {
             selected = (selected == paletteIndex) ? -1 : paletteIndex;
             click();
             return true;
@@ -392,7 +393,7 @@ public class CraftleScreen extends Screen {
 
         int cell = gridCellAt(mx, my);
         if (cell >= 0 && canEdit()) {
-            if (event.button() == 1) {
+            if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
                 if (grid[cell] != GuessEvaluator.NO_ITEM) {
                     grid[cell] = GuessEvaluator.NO_ITEM;
                     onGridEdited();
@@ -400,7 +401,7 @@ public class CraftleScreen extends Screen {
                 }
                 return true;
             }
-            if (event.button() == 0) {
+            if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                 if (selected >= 0) {
                     if (grid[cell] != selected) {
                         grid[cell] = selected;

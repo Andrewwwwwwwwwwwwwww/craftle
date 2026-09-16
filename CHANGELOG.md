@@ -7,6 +7,12 @@
   0.160.5+26.3) alongside the 26.2 build, which carries on unchanged. Same code, same
   puzzles, same daily reset on both.
 
+### Fixed
+- **Nothing in the puzzle screens responded to the mouse on 26.3.** Minecraft 26.3 renumbered its mouse
+  buttons, so the left button no longer reads as 0, and the screens were comparing the raw number: every
+  left click was taken for a right click, and right clicks matched nothing. The screens now name the
+  buttons instead of assuming a number, on every build.
+
 ## [1.1.0] - 2026-08-31
 
 ### Changed
