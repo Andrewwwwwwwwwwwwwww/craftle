@@ -12,7 +12,10 @@ import java.util.List;
  * everyone else. The server is still asked for each recipe's actual layout, so the answer
  * always matches what really crafts there.</p>
  *
- * <p>Generated from the Minecraft 26.2 recipe data; regenerate when the game version changes.</p>
+ * <p>Generated from the Minecraft 26.2 recipe data, then extended on 2026-09-19 with the 26.3
+ * recipes buildable from the same palette. The list is append-only: a recipe's position is what
+ * the daily indexes, so new entries always go at the end. Servers on an older version simply skip
+ * the recipes they do not have.</p>
  */
 public final class VanillaRecipes {
     private VanillaRecipes() {
@@ -61,5 +64,6 @@ public final class VanillaRecipes {
             "minecraft:white_bed", "minecraft:white_carpet", "minecraft:white_harness",
             "minecraft:white_wool_from_string", "minecraft:wooden_axe", "minecraft:wooden_hoe",
             "minecraft:wooden_pickaxe", "minecraft:wooden_shovel", "minecraft:wooden_spear",
-            "minecraft:wooden_sword");
+            "minecraft:wooden_sword",
+            "minecraft:white_wool_slab", "minecraft:white_wool_stairs");
 }
