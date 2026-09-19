@@ -1,5 +1,18 @@
 # Craftle Changelog
 
+## [1.3.0] - 2026-09-19
+
+Daily sequence: changes. The pool grew and the deal is drawn from the pool size, so from this
+version each day maps to a different recipe than it did on 1.2.x.
+
+### Added
+- **Two Minecraft 26.3 recipes: white wool slab and white wool stairs.** They are the only 26.3
+  additions that build entirely from the existing palette, so the eighteen ingredients you play
+  with are unchanged. The pool is now 129.
+  - A 26.2 or 26.1.2 server does not have these recipes, so it skips those two days and deals the
+    next puzzle instead, as it always has for anything it lacks.
+
+
 ## [1.2.0] - 2026-09-15
 
 ### Added
